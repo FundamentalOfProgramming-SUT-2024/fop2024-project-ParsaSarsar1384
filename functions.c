@@ -33,12 +33,30 @@ typedef struct {
     int x;  
     int y;  
 } mokh; 
-typedef struct info{
+typedef struct{
     int jan;
     int time;
     char message[300];
 } Info;
-Info datas={6,0,"Message Box ..."};
+typedef struct{
+    int type;
+    int janAdd;
+    mokh place;
+} Food;
+typedef struct{
+    int type;
+    mokh place;
+} Weapon;
+int goldNum=0;
+int goldNumTake=0;
+Info datas={30,0,"Message Box ..."};
+Weapon weapons[200];
+Food foods[200];
+mokh golds[200];
+int weaponNum=0;
+mokh firstWin;
+mokh lastWin;
+int end = 0;
 void movePlayer(mokh* player, char* last, int ch,int color) {  
     int new_x = player->x;  
     int new_y = player->y;  
@@ -66,18 +84,53 @@ void movePlayer(mokh* player, char* last, int ch,int color) {
     }  
     else
         event=0;
+    if ((new_x > firstWin.x && new_x < lastWin.x) && (new_y > firstWin.y && new_y < lastWin.y))
+    {
+        clear();
+        mvprintw(20,20,"You Win!");
+        getch();
+        end = 1;
+        
+    }
+    
     if (event)
     {
         char next_char = mvinch(new_y, new_x);  
-        if (next_char=='^')
+        if (next_char=='O')
         {
-            boxPrint(datas.jan,"You Hit a Column!",datas.time);
+            strcpy(datas.message,"You Hit a Column!");
         }
         else if (next_char=='F')
         {
-            boxPrint(datas.jan,"You Hit Fire!",datas.time);
+            strcpy(datas.message,"You Hit Fire!");
+
+            datas.jan--;
         }
-        if (next_char != '|' && next_char!='_' && next_char!='^' && next_char !='F') {  
+        else if (next_char =='^')
+        {
+            // boxPrint(datas.jan,"You Hit a trap!",datas.time);
+            strcpy(datas.message,"You Hit a trap!");
+            datas.jan--;
+            next_char ='.';
+        }
+        else if(next_char!='|' && next_char!='_' && next_char!=' ' && next_char!='+' && next_char!='.'){
+                 next_char ='.'; 
+                // boxPrint(datas.jan,"You grab a Weapon!",datas.time);
+                strcpy(datas.message,"You grab a Weapon!");
+                for (int i = 0; i < goldNum; i++)
+                {
+                    if (golds[i].y == new_y && golds[i].x == new_x)
+                    {  
+                        strcpy(datas.message,"You got a Gold!");
+                        break;
+                        goldNumTake++;
+                    }
+                }
+                
+                
+        }
+            
+        if (next_char != '|' && next_char!='_' && next_char!='O' && next_char !='F') {  
             mvprintw(player->y, player->x, "%c", *last);  
             *last = mvinch(player->y, player->x);  
             attron(COLOR_PAIR(color));  
@@ -333,7 +386,7 @@ int strToInt(char* a){
 void boxPrint(int live,char message[],int time){
     attron(COLOR_PAIR(1));
     char liveN[500];
-    for (int i = 0; i < live; i++)
+    for (int i = 0; i < live/5; i++)
     {
         strcat(liveN,"\U0001F377");
     }
@@ -379,13 +432,14 @@ int main() {
     init_pair(2, COLOR_GREEN, COLOR_BLACK); // Second color pair (for the second row)  
     init_pair(3, COLOR_BLUE, COLOR_BLACK);
     init_pair(4, COLOR_BLACK, COLOR_GREEN);
+    init_pair(5, COLOR_YELLOW, COLOR_BLACK);
     keypad(stdscr, TRUE);  // Enable keypad for arrow keys
     noecho();  // Disable echoing of input characters
     curs_set(0);  // Hide the cursor
     // goto game;
     first:char* levels[] = {"Register", "Sign-in", "Pre-Game","Setting","Profile", "Exit"};
     int op;
-        printw("\n\n\n\n\n\n\n\n\n\n%ld",sizeof("\u2694"));
+        printw("%ld",sizeof("\u2694"));
 
     while (1) {
         op = menu("--- Rogue ---", 6, levels);
@@ -524,6 +578,9 @@ int main() {
         {
             char *options[] = {"Login As Guest","Login","Forgot MY Password","Exit"};
             curs_set(0);
+            int temp2;
+            char **lines = readFromFile("main.txt", &temp2);
+            char **array = split(lines[0],',',&temp2);
             int opLogin = menu("--- Login ---", 4, options);
             curs_set(1);
             if (opLogin==0)
@@ -581,7 +638,15 @@ int main() {
             if (lines != NULL && lineCount >= 2) {
                 if (strcmp(value[1], lines[0]) == 0) {  // Check if password matches
                     mvprintw(10, 10, "Login Successful!");
-                    writeToFile("main.txt",value[0]);
+                    char temp[100]="";
+                    strcat(temp,value[0]);
+                    strcat(temp,",");
+                    strcat(temp,array[1]);
+                    strcat(temp,",");
+                    strcat(temp,array[2]);
+                    strcat(temp,",");
+                    strcat(temp,array[3]);
+                    writeToFile("main.txt",temp);
                 } else {
                     attron(COLOR_PAIR(1));
                     mvprintw(10, 10, "Invalid Password!");
@@ -687,63 +752,105 @@ int main() {
                     i--;  
                     continue;  
                 }  
-
                 rooms[i].start_x = (rooms[i].start_x / (x / 3)) * (x / 3) + rand() % 3 + 1;  
                 rooms[i].start_y = (rooms[i].start_y / (y / 3)) * (y / 3) + rand() % 3 + 1;  
                 rooms[i].width = rand() % (x / 9) + x / 9;  
                 rooms[i].height = rand() % (y / 9) + y / 7 + 2;  
-
-                // افزودن در به اتاق (بدون تابع)  
-                int numDoors = rand() % 3 + 1; // تعداد درها بین 1 تا 3  
+                int numDoors = rand() % 3 + 1;  
             }
+            int goldRoom=-1;
+            int majonRoom=-1;
+            datas.jan = 30;
+            datas.time = 0;
             mokh player = (mokh){rooms[0].start_x + rand()%(rooms[0].width - 2) + 1,rooms[0].start_y + rand()%(rooms[0].height - 2) + 1};  
             for (int j = 0; j < a; j++) {
-                mokh full[1000];
-                int objNum=0;  
-                // رسم دیوارهای بالایی و پایینی  
-                for (int i = 1; i < rooms[j].width - 1; i++) {  
-                    mvprintw(rooms[j].start_y, rooms[j].start_x + i, "_");  
-                    mvprintw(rooms[j].start_y + rooms[j].height - 1, rooms[j].start_x + i, "_");  
-                }  
-
-                // رسم دیوارهای چپ و راست  
-                for (int i = 1; i < rooms[j].height; i++) {  
-                    mvprintw(rooms[j].start_y + i, rooms[j].start_x, "|");  
-                    mvprintw(rooms[j].start_y + i, rooms[j].start_x + rooms[j].width - 1, "|");  
-                }  
-
-                for (int i = 1; i < rooms[j].height - 1; i++) {  
-                    for (int k = 1; k < rooms[j].width - 1; k++) {  
-                        mvprintw(rooms[j].start_y + i, rooms[j].start_x + k, ".");  
-                    }  
-                }  
-                int b = rand()%(rooms[j].height - 1) + 1;
-                int s = rand()%(rooms[j].width - 1) + 1;
-                int c = rand()%2;
-                mvprintw(rooms[j].start_y + b*c,rooms[j].start_x + s*(c-1)*(c-1), "+"); 
-                int sotonNum = rand()%3;
-                
-                for (int i = 0; i < sotonNum; i++)
+                if (goldRoom==-1)
                 {
-                    int  y,x;
-                    y = rooms[j].start_y + rand()%(rooms[j].height - 2) + 1;
-                    x = rooms[j].start_x + rand()%(rooms[j].width - 2) + 1;
-                    mvprintw(y,x,"^");
-                    full[objNum++] = (mokh){y,x};
+                    goldRoom = rand()%(a-1) + 1;
                 }
-                sotonNum = rand()%3;
-                for (int i = 0; i < sotonNum; i++)
+                if (majonRoom==-1 && majonRoom!=goldRoom)
+                {
+                    majonRoom = rand()%(a-1) + 1;
+                }
+                if (goldRoom == j)
+                {
+                    attron(COLOR_PAIR(5));
+                }
+                if (majonRoom == j)
+                {
+                    attron(COLOR_PAIR(3));
+                }
+                for (int i = 1; i < rooms[j].height - 1; i++)
+                    for (int k = 1; k < rooms[j].width - 1; k++)
+                        mvprintw(rooms[j].start_y + i, rooms[j].start_x + k, ".");  
+                if (goldRoom == j)
+                {
+                    for (int i = 0; i < 6 + rand()%3; i++)
+                    {
+                        int  y,x;
+                        y = rooms[j].start_y + rand()%(rooms[j].height - 4) + 1;
+                        x = rooms[j].start_x + rand()%(rooms[j].width - 4) + 1;
+                        mvprintw(y,x,"\u2605");
+                        golds[goldNum++] = (mokh){y,x};
+                    }
+                    attroff(COLOR_PAIR(5));
+                    firstWin = (mokh){rooms[j].start_y,rooms[j].start_x};
+                    lastWin = (mokh){rooms[j].start_y + rooms[j].height,rooms[j].start_x + rooms[j].width};
+                }
+                if (majonRoom == j)
+                {
+                    for (int i = 0; i < 6 + rand()%3; i++)
+                    {
+                        int  y,x;
+                        y = rooms[j].start_y + rand()%(rooms[j].height - 4) + 1;
+                        x = rooms[j].start_x + rand()%(rooms[j].width - 4) + 1;
+                        mvprintw(y,x,"\U0001F37E");
+                        // golds[goldNum++] = (mokh){y,x};
+                    }
+                    attroff(COLOR_PAIR(3));
+                }
+                for (int i = 0; i < rand()%3; i++)
                 {
                     int  y,x;
                     y = rooms[j].start_y + rand()%(rooms[j].height - 2) + 1;
                     x = rooms[j].start_x + rand()%(rooms[j].width - 2) + 1;
+                    mvprintw(y,x,"O");
+                }
+                for (int i = 0; i < 1 + rand()%3; i++)
+                    {
+                        int  y,x;
+                        y = rooms[j].start_y + rand()%(rooms[j].height - 4) + 1;
+                        x = rooms[j].start_x + rand()%(rooms[j].width - 4) + 1;
+                        mvprintw(y,x,"\u2605");
+                        mvprintw(y,x+1,".");
+                    }
+                for (int i = 0; i < rand()%3; i++)
+                {
+                    int  y,x;
+                    y = rooms[j].start_y + rand()%(rooms[j].height - 4) + 1;
+                    x = rooms[j].start_x + rand()%(rooms[j].width - 4) + 1;
                     attron(COLOR_PAIR(2));
                     char* xxx = "\u2694";
                     mvprintw(y,x,"%s",xxx);
+                    mvprintw(y,x+1,".");
                     attroff(COLOR_PAIR(2));
-                    full[objNum++] = (mokh){y,x};
+                    weapons[weaponNum++].place = (mokh){x,y};
+                    weapons[weaponNum].type = 1;
                 }
-                 for (int i = 0; i < sotonNum; i++)
+                for (int i = 0; i < rand()%4; i++)
+                {
+                    int  y,x;
+                    y = rooms[j].start_y + rand()%(rooms[j].height - 4) + 1;
+                    x = rooms[j].start_x + rand()%(rooms[j].width - 4) + 1;
+                    attron(COLOR_PAIR(2));
+                    char* xxx = "\U0001F5E1";
+                    mvprintw(y,x,"%s",xxx);
+                    mvprintw(y,x+1,".");
+                    attroff(COLOR_PAIR(2));
+                    weapons[weaponNum++].place = (mokh){x,y};
+                    weapons[weaponNum].type = 2;
+                }
+                for (int i = 0; i < rand()%3; i++)
                 {
                     int  y,x;
                     y = rooms[j].start_y + rand()%(rooms[j].height - 2) + 1;
@@ -751,8 +858,45 @@ int main() {
                     attron(COLOR_PAIR(2));
                     mvprintw(y,x,"F");
                     attroff(COLOR_PAIR(2));
-                    full[objNum++] = (mokh){y,x};
+                }
+                 for (int i = 0; i < rand()%3; i++)
+                {
+                    int  y,x;
+                    y = rooms[j].start_y + rand()%(rooms[j].height - 2) + 1;
+                    x = rooms[j].start_x + rand()%(rooms[j].width - 2) + 1;
+                    attron(COLOR_PAIR(1));
+                    mvprintw(y,x,"^");
+                    attroff(COLOR_PAIR(1));
                 } 
+                if (goldRoom == j)
+                {
+                    attron(COLOR_PAIR(5));
+                }
+                if (majonRoom == j)
+                {
+                    attron(COLOR_PAIR(3));
+                }
+                for (int i = 1; i < rooms[j].width - 1; i++) {  
+                    mvprintw(rooms[j].start_y, rooms[j].start_x + i, "_");  
+                    mvprintw(rooms[j].start_y + rooms[j].height - 1, rooms[j].start_x + i, "_");  
+                }  
+                // رسم دیوارهای چپ و راست  
+                for (int i = 1; i < rooms[j].height; i++) {  
+                    mvprintw(rooms[j].start_y + i, rooms[j].start_x, "|");  
+                    mvprintw(rooms[j].start_y + i, rooms[j].start_x + rooms[j].width - 1, "|");  
+                }
+                 int b = rand()%(rooms[j].height - 1) + 1;
+                int s = rand()%(rooms[j].width - 1) + 1;
+                int c = rand()%2;
+                mvprintw(rooms[j].start_y + b*c,rooms[j].start_x + s*(c-1)*(c-1), "+"); 
+                if (goldRoom == j)
+                {
+                    attroff(COLOR_PAIR(5));
+                }  
+                if (majonRoom == j)
+                {
+                    attroff(COLOR_PAIR(3));
+                }    
             }
             
             
@@ -764,6 +908,14 @@ int main() {
             int seconds=0;
             boxPrint(datas.jan,datas.message,0);
             while(1){
+                if (end == 1)
+                {
+                   mvprintw(100,20,"You Win!");
+                    getch();
+                    // goto first;
+                    end=0;
+                }
+                
                 if (time(0) - timeFirst >= 1)
                 {
                     seconds += time(0) - timeFirst;
@@ -775,32 +927,46 @@ int main() {
                     if (datas.jan <= 0)
                     {
                         clear();
-                        break;
                         mvprintw(30,40,"YOU LOSE !  Press Ecs key to Exit");
-                        getch();
-                        datas= (Info){6,0,"Message Box ..."};;
                     }
                     boxPrint(datas.jan,datas.message,datas.time +=time(0) - timeFirst);
-                    
                     timeFirst = time(NULL);
                 }
                 int ch = getch();
-                // printw("%d\n",ch);
                  movePlayer(&player, &last, ch,strToInt(array[2])+1); 
                 if (ch == 27)
                 {
                     goto first;
-                }
-                
-                
-                
+                    datas= (Info){30,0,"Message Box ..."};
+                } 
             }
           
 
 
             getch();
             }
-            
+            else if (opGame == 2)
+            {
+                clear();
+                 mvprintw(9,58,"         +-------------------------------------+");
+                mvprintw(10,58,"         |                Poison               |");
+                mvprintw(11,58,"         +-------------------------------------+");
+                mvprintw(12,58,"         |  1-      : \U0001F37E                       |");
+                mvprintw(13,58,"         |  2-      : \U0001F377                       |");
+                mvprintw(14,58,"         |  3-      : \U0001F37C                       |");
+                mvprintw(15,58,"         +-------------------------------------+");
+
+                mvprintw(16+3,58,"         +-------------------------------------+");
+                mvprintw(17+3,58,"         |                Weapon               |");
+                mvprintw(18+3,58,"         +-------------------------------------+");
+                mvprintw(19+3,58,"         |  1-      :  \u2692                       |");
+                mvprintw(20+3,58,"         |  2-      :  \U0001F5E1                       |");
+                mvprintw(21+3,58,"         |  3-      :  \U0001FA84                      |");
+                mvprintw(22+3,58,"         |  4-      :  \u27B3                       |");
+                mvprintw(23+3,58,"         |  5-      :  \u2694                       |");
+                mvprintw(24+3,58,"         +-------------------------------------+");
+                getch();
+            }
             else if (opGame == 3)
             {
                 clear();
